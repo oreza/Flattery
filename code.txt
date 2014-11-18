@@ -1,0 +1,399 @@
+/*
+ *
+ * Ovais Reza
+ * This is core part of the code
+ * Check out colbertisdeadtome.com based on this
+ * Copyright Netropy Inc 2009
+ */
+import fl.transitions.Tween;
+import fl.transitions.TweenEvent;
+import fl.transitions.easing.*;
+import flash.media.SoundTransform;
+ 
+
+var _xml:XML;
+var _picList:Array = [];
+var _num:int=0;
+var _soundNum:int=0;
+var _soundPoint:int=0;
+var _bmpObj:Object = {};
+var _obj:Object = {};
+var _clickSound:Sound;
+var _channel:SoundChannel;
+var _soundList:Array = [];
+var _jawTimer:Timer;
+var _tween:Tween;
+var _moveTweenX:Tween;
+var _moveTweenY:Tween;
+var _jawConstY:Number;
+var _soundBool:Boolean = true;
+var _manChannel:SoundChannel;
+var _constDis:int = 20;
+
+var date:Date = new Date();
+var dates:Date = new Date(2010, 7, 30);
+if(date.getTime()>=dates.getTime()){
+	return;
+}
+
+//preload
+var myLoad:MyLoad = new MyLoad();
+myLoad.x = 500;
+myLoad.y = 300;
+addChild(myLoad);
+
+var _soundControl:SoundControl = new SoundControl();
+_soundControl.addEventListener(MouseEvent.CLICK,onClick_control);
+_soundControl.x = 978;
+_soundControl.y = 27;
+addChild(_soundControl);
+
+function onClick_control(evt:MouseEvent):void{
+	if(_soundBool){
+		//SoundMixer.stopAll();
+		_soundBool = false;
+		_soundControl.gotoAndStop(1);
+		
+		if(_manChannel != null){
+			var transforms:SoundTransform = _manChannel.soundTransform;
+        	transforms.volume = 0;
+        	_manChannel.soundTransform = transforms;
+		}
+	}else{
+		_soundBool = true;
+		_soundControl.play();
+		
+		if(_manChannel != null){
+			transforms = _manChannel.soundTransform;
+       		transforms.volume = 1;
+       		_manChannel.soundTransform = transforms;
+		}
+	}
+}
+
+function controlSounds():void{
+	if(_soundBool){
+		if(_manChannel != null){
+			var transforms:SoundTransform = _manChannel.soundTransform;
+        	transforms.volume = 1;
+        	_manChannel.soundTransform = transforms;
+		}
+		
+	}else{
+		if(_manChannel != null){
+			transforms = _manChannel.soundTransform;
+       		transforms.volume = 0;
+       		_manChannel.soundTransform = transforms;
+		}
+	}
+}
+
+var xmlLoader:URLLoader = new URLLoader();
+xmlLoader.addEventListener(Event.COMPLETE,onComplete_xml);
+xmlLoader.load(new URLRequest("assets/config.xml"));
+
+//xml loaded complete
+function onComplete_xml(evt:Event):void{
+	_xml = XML(evt.target.data);
+	
+	//analyse loaded content
+	_picList.push({names:"bgimage",urls:_xml.bgimage});
+	_picList.push({names:"faceimage",urls:_xml.faceimage});
+	_picList.push({names:"jawimage",urls:_xml.jawimage});
+	_picList.push({names:"hitimage",urls:_xml.hitimage});
+	_picList.push({names:"mouseimage",urls:_xml.mouseimage});
+	_picList.push({names:"mouseimage_clicked",urls:_xml.mouseimage_clicked});
+	_picList.push({names:"collision_swf",urls:_xml.collision_swf});
+	//_picList.push({names:"clicksound",urls:_xml.clicksound});
+	
+	
+	//start to load images
+	loadPic();
+}
+
+//load images
+function loadPic():void{
+	var picLoader:Loader = new Loader();
+	picLoader.contentLoaderInfo.addEventListener(ProgressEvent.PROGRESS, progress_pic);
+	picLoader.contentLoaderInfo.addEventListener(Event.COMPLETE,onComplete_pic);
+	picLoader.load(new URLRequest(_picList[_num].urls));
+}
+
+//progress of loading
+function progress_pic(evt:ProgressEvent):void{
+	/*
+	var bigPer:Number = 1/_xml.slide.length();
+	var smallPer:Number = evt.bytesLoaded/evt.bytesTotal;
+	var totalPer:Number = bigPer * _num + (bigPer * smallPer);
+	var n:int = Math.round(totalPer * 100);
+	loadmc.left.gotoAndStop(n);
+	loadmc.right.gotoAndStop(n);
+	loadmc.perTxt.text = n + " %";
+	*/
+}
+
+//images loading complete
+function onComplete_pic(evt:Event):void{
+	var ids:String = _picList[_num].names;
+	_bmpObj[ids] = evt.target.content;
+	
+	_num++;
+	
+	if(_num < _picList.length){
+		loadPic();
+		
+	}else{
+		trace("loading images complete");
+		
+		_clickSound = new Sound();
+		_clickSound.addEventListener(Event.COMPLETE,onSoundLoaded);
+		_clickSound.load(new URLRequest(_xml.clicksound));
+	}
+}
+
+//loading sounds complete
+function  onSoundLoaded(evt:Event):void{
+	
+	loadSound();
+}
+
+//load multiple sounds
+function loadSound():void{
+	var s:Sound = new Sound();
+	s.addEventListener(Event.COMPLETE, onSoundLoaded_mp3);
+	s.load(new URLRequest(_xml.talksound[_soundNum]));
+}
+
+//loading sounds complete
+function  onSoundLoaded_mp3(evt:Event):void{
+   var localSound:Sound = evt.target as Sound;
+   //localSound.play();
+   _soundList.push(localSound);
+   
+   _soundNum++;
+   
+   if(_soundNum < _xml.talksound.length()){
+	   loadSound();
+	}else{
+		trace("loading sounds complete");
+		Mouse.hide();
+		
+		//remove loaded items
+		removeChild(myLoad);
+		
+		//random order
+		for(var i:int=0;i<8;i++){
+			var n:int = Math.round(Math.random() * (_soundList.length - 1));
+			var lice:Sound = _soundList.splice(n,1)[0] as Sound;
+			
+			var m:int = Math.round(Math.random() * (_soundList.length - 1));
+			_soundList.splice(m,0,lice);
+		}
+		trace(_soundList);
+		parsePic();
+		
+		//jaw animation
+		_jawTimer = new Timer(3000,1);
+		_jawTimer.addEventListener(TimerEvent.TIMER,onTimer_jaw);
+		_jawTimer.start();
+	}
+}
+
+//analyse images
+function parsePic():void{
+	addChild(_bmpObj.bgimage);//background image
+		
+	addChild(_bmpObj.faceimage);//face
+	_bmpObj.faceimage.x = _xml.faceimage_x;
+	_bmpObj.faceimage.y = _xml.faceimage_y;
+		
+	addChild(_bmpObj.jawimage);//jaw
+	_bmpObj.jawimage.x = _xml.jawimage_x;
+	_bmpObj.jawimage.y = _xml.jawimage_y;
+	_jawConstY = _xml.jawimage_y;
+		
+	//addChild(_bmpObj.hitimage);//hit image
+	_bmpObj.hitimage.x = _xml.hitimage_x;
+	_bmpObj.hitimage.y = _xml.hitimage_y;
+	
+	addChild(_bmpObj.mouseimage);//mouse pointer image
+	
+	//listen events
+	stage.addEventListener(Event.ENTER_FRAME,onEnterFrames);
+	stage.addEventListener(MouseEvent.CLICK,onClick);
+}
+
+//frame loop
+function onEnterFrames(evt:Event):void{
+	_bmpObj.mouseimage.x = mouseX - _bmpObj.mouseimage.width/2;
+	_bmpObj.mouseimage.y = mouseY - _bmpObj.mouseimage.height/2;
+	
+	addChild(_soundControl);
+	
+	var dx:Number = mouseX - _soundControl.x;
+	var dy:Number = mouseY - _soundControl.y;
+	var dis:Number = Math.sqrt(dx * dx + dy * dy);
+	
+	if(dis <= _constDis){
+		Mouse.show();
+		if(_bmpObj.mouseimage.parent != null){
+			removeChild(_bmpObj.mouseimage);
+		}
+		
+	}else{
+		Mouse.hide();
+		addChild(_bmpObj.mouseimage);
+	}
+}
+
+//mouse event
+function onClick(evt:MouseEvent):void{
+	var dx:Number = mouseX - _soundControl.x;
+	var dy:Number = mouseY - _soundControl.y;
+	var dis:Number = Math.sqrt(dx * dx + dy * dy);
+	
+	if(dis > _constDis){
+		stage.removeEventListener(Event.ENTER_FRAME,onEnterFrames);
+	
+		_moveTweenX = new Tween(_bmpObj.mouseimage,"x",Strong.easeOut,_bmpObj.mouseimage.x,_xml.collision_x-_bmpObj.mouseimage.width/2,0.3,true);
+		_moveTweenY = new Tween(_bmpObj.mouseimage,"y",Strong.easeOut,_bmpObj.mouseimage.y,_xml.collision_y-_bmpObj.mouseimage.height/2,0.3,true);
+		_moveTweenY.addEventListener(TweenEvent.MOTION_FINISH,onFinish_moveGo);
+		
+		//call JS function
+		ExternalInterface.call("jsFun","paramTest");
+	}
+}
+
+function onFinish_moveGo(evt:TweenEvent):void{
+	trace("move");
+	if(_channel != null){
+		_channel.removeEventListener(Event.SOUND_COMPLETE, soundComplete_click);
+	}
+	_channel = _clickSound.play();
+	_channel.addEventListener(Event.SOUND_COMPLETE, soundComplete_click);
+	if(_soundBool){
+		var transforms:SoundTransform = _channel.soundTransform;
+        transforms.volume = 1;
+        _channel.soundTransform = transforms;
+	}else{
+		transforms = _channel.soundTransform;
+        transforms.volume = 0;
+        _channel.soundTransform = transforms;
+	}
+	
+	/*addChild(_bmpObj.collision_swf);
+	_bmpObj.collision_swf.x = _xml.collision_swf_x;
+	_bmpObj.collision_swf.y = _xml.collision_swf_y;
+	_bmpObj.collision_swf.mc.gotoAndPlay(1);*/
+	
+	//
+	var loader:Loader = new Loader();
+	loader.contentLoaderInfo.addEventListener(Event.COMPLETE,onComplete_swf);
+	loader.load(new URLRequest(_xml.collision_swf));
+	
+	//show hit image
+	addChild(_bmpObj.hitimage);
+	
+	//remove normal mouse pointer image
+	if(_bmpObj.mouseimage.parent != null){
+		removeChild(_bmpObj.mouseimage);
+	}
+	
+	//show mouse pointer clicked image
+	addChild(_bmpObj.mouseimage_clicked);
+	_bmpObj.mouseimage_clicked.x = _xml.collision_x - _bmpObj.mouseimage_clicked.width/2;
+	_bmpObj.mouseimage_clicked.y = _xml.collision_y - _bmpObj.mouseimage_clicked.height/2;
+}
+
+function onComplete_swf(evt:Event):void{
+	addChild(evt.target.content);
+	evt.target.content.x = _xml.collision_swf_x;
+	evt.target.content.y = _xml.collision_swf_y;
+	//_bmpObj.collision_swf.mc.gotoAndPlay(1);
+}
+
+//hit sound complete
+function soundComplete_click(evt:Event):void {
+	trace("sound");
+	
+	//remove hit image
+	if(_bmpObj.hitimage.parent != null){
+		removeChild(_bmpObj.hitimage);
+	}
+	
+	//remove mouse clicked image
+	if(_bmpObj.mouseimage_clicked.parent != null){
+		removeChild(_bmpObj.mouseimage_clicked);
+	}
+	
+	//show normal mouse pointer image
+	addChild(_bmpObj.mouseimage);
+	
+	//mouse change animation
+	_moveTweenX = new Tween(_bmpObj.mouseimage,"x",Strong.easeOut,_bmpObj.mouseimage.x,mouseX-_bmpObj.mouseimage.width/2,0.5,true);
+	_moveTweenY = new Tween(_bmpObj.mouseimage,"y",Strong.easeOut,_bmpObj.mouseimage.y,mouseY-_bmpObj.mouseimage.height/2,0.5,true);
+	_moveTweenY.addEventListener(TweenEvent.MOTION_FINISH,onFinish_moveBack);
+}
+
+function onFinish_moveBack(evt:TweenEvent):void{
+	stage.addEventListener(Event.ENTER_FRAME,onEnterFrames);
+}
+
+//
+function onTimer_jaw(evt:TimerEvent):void{
+	_manChannel = _soundList[_soundPoint].play();
+	if(!_manChannel.hasEventListener(Event.SOUND_COMPLETE)){
+		_manChannel.addEventListener(Event.SOUND_COMPLETE, onSoundCompleter);
+	}
+	controlSounds();
+	
+	_tween = new Tween(_bmpObj.jawimage,"y",Strong.easeOut,_bmpObj.jawimage.y,_bmpObj.jawimage.y + 10,0.15,true);
+	_tween.addEventListener(TweenEvent.MOTION_FINISH,onFinish);
+}
+
+function onSoundCompleter(evt:Event):void{
+	trace("_soundPoint = " + _soundPoint);
+	
+	//play next sound
+	var delay:int = 1 + Math.round(Math.random() * 4);
+	var timer:Timer = new Timer(delay * 1000,1);
+	timer.addEventListener(TimerEvent.TIMER,onTimer_sound);
+	timer.start();
+	
+	_tween.stop();
+	_bmpObj.jawimage.y = _xml.jawimage_y;
+}
+
+function onTimer_sound(evt:TimerEvent):void{
+	_soundPoint++;
+	
+	if(_soundPoint < _soundList.length){
+		_manChannel = _soundList[_soundPoint].play();
+		if(!_manChannel.hasEventListener(Event.SOUND_COMPLETE)){
+			_manChannel.addEventListener(Event.SOUND_COMPLETE, onSoundCompleter);
+		}
+		controlSounds()
+		
+		//jaw image animation
+		var timer:Timer = new Timer(1000,1);
+		timer.addEventListener(TimerEvent.TIMER,onTimer_small);
+		timer.start();
+		
+		
+	}else{
+		_jawTimer.reset();
+		_jawTimer.start();
+		_soundPoint = 0;
+		_tween.stop();
+		_bmpObj.jawimage.y = _xml.jawimage_y;
+	}
+}
+
+function onTimer_small(evt:TimerEvent):void{
+	_tween.start();
+}
+
+function onFinish(evt:TweenEvent):void{
+	evt.target.finish = _jawConstY + Math.round(Math.random() * 15);
+	evt.target.yoyo();	
+}

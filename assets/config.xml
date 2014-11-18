@@ -1,0 +1,27 @@
+<project>
+	<bgimage> assets/bg.jpg </bgimage>
+	<faceimage> assets/face.png </faceimage>
+	<faceimage_x> 0 </faceimage_x>
+	<faceimage_y> 183 </faceimage_y>
+	<jawimage> assets/jaw.png </jawimage>
+	<jawimage_x> 129 </jawimage_x>
+	<jawimage_y> 430 </jawimage_y>
+	<hitimage> assets/blush.png </hitimage>
+	<hitimage_x> 0 </hitimage_x>
+	<hitimage_y> 183 </hitimage_y>
+	<mouseimage> assets/lips.png </mouseimage>
+	<mouseimage_clicked> assets/lipscliced.png </mouseimage_clicked>
+	<collision_x> 138 </collision_x>
+	<collision_y> 367 </collision_y>
+	<collision_swf> assets/heart.swf </collision_swf>
+	<collision_swf_x> 50 </collision_swf_x>
+	<collision_swf_y> 200 </collision_swf_y>
+	<clicksound> assets/kiss.mp3 </clicksound>
+	<talksound> assets/mp3/1.mp3 </talksound>
+	<talksound> assets/mp3/2.mp3 </talksound>
+	<talksound> assets/mp3/3.mp3 </talksound>
+	<talksound> assets/mp3/4.mp3 </talksound>
+	<talksound> assets/mp3/5.mp3 </talksound>
+	<talksound> assets/mp3/6.mp3 </talksound>
+	<talksound> assets/mp3/7.mp3 </talksound>
+</project>	
